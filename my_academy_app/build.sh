@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 cd "$(dirname "$0")"
+FLUTTER_VERSION="3.38.4"
 
 echo "=========================================="
 echo " Starting Quaid Academy Vercel Web Build  "
@@ -8,15 +9,16 @@ echo "=========================================="
 
 # 1. Clone Flutter SDK if not cached
 if [ ! -d "flutter" ]; then
-  echo "--> Cloning Flutter SDK (stable channel)..."
-  git clone https://github.com/flutter/flutter.git -b stable --depth 1
+  echo "--> Cloning Flutter SDK $FLUTTER_VERSION..."
+  git clone https://github.com/flutter/flutter.git -b "$FLUTTER_VERSION" --depth 1
 else
-  echo "--> Flutter SDK already exists. Updating..."
-  cd flutter && git pull && cd ..
+  echo "--> Flutter SDK already exists. Checking out $FLUTTER_VERSION..."
+  git -C flutter fetch --depth 1 origin "refs/tags/$FLUTTER_VERSION:refs/tags/$FLUTTER_VERSION"
+  git -C flutter checkout "$FLUTTER_VERSION"
 fi
 
 # 2. Setup PATH
-export PATH="$PATH:$(pwd)/flutter/bin"
+export PATH="$(pwd)/flutter/bin:$PATH"
 
 # 3. Disable telemetry & print version
 flutter config --no-analytics
