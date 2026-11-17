@@ -1,0 +1,212 @@
+﻿rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        !exists(/databases/$(database)/documents/roles/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'Admin' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isTeacher() {
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'teacher' ||
+          get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'Teacher')) ||
+        exists(/databases/$(database)/documents/teachers/$(request.auth.uid))
+      );
+    }
+
+    function isStudent() {
+      return isSignedIn();
+    }
+
+    // Helper to verify a teacher is creating an announcement for their authorized students/subject
+    function isTeacherAnnouncement() {
+      return isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        (request.resource.data.type == 'teacher_announcement' ||
+         request.resource.data.notificationType == 'teacher_announcement')
+      );
+    }
+
+    // ── Roles ─────────────────────────────────────────────────────────────
+    match /roles/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── Teachers ──────────────────────────────────────────────────────────
+    match /teachers/{teacherId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || request.auth.uid == teacherId;
+      match /{subcollection=**} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin() || request.auth.uid == teacherId;
+      }
+    }
+
+    // ── Teacher Payouts & Salary Ledger ───────────────────────────────────
+    match /teacher_payouts/{payoutId} {
+      allow read, get, list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin() || request.auth.uid startsWith 'T-';
+    }
+
+    // ── Students ──────────────────────────────────────────────────────────
+    match /students/{studentId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || request.auth.uid == studentId;
+      match /{subcollection=**} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin() || request.auth.uid == studentId;
+      }
+    }
+
+    // ── Student Auth & Password Recovery OTPs ─────────────────────────────
+    match /student_auth/{studentId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || request.auth.uid == studentId;
+    }
+
+    match /verification_otps/{otpId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if request.auth.uid == $otpId;
+    }
+
+    match /mail/{mailId} {
+      allow read: if isSignedIn();
+      allow write, create: if isAdmin();
+    }
+
+    // ── Notifications, Announcements & Notices ────────────────────────────
+    // Teachers can create and broadcast announcements directly to their students
+    match /notifications/{notifId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (isAdmin() || isTeacher());
+      allow update, delete: if isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        resource.data.teacherId == request.auth.uid ||
+        resource.data.senderId == request.auth.uid
+      );
+      allow write: if isAdmin();
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (isAdmin() || isTeacher());
+      allow update, delete: if isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        resource.data.teacherId == request.auth.uid ||
+        resource.data.senderId == request.auth.uid
+      );
+      allow write: if isAdmin();
+    }
+
+    match /notices/{noticeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (isAdmin() || isTeacher());
+      allow update, delete: if isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        resource.data.teacherId == request.auth.uid ||
+        resource.data.senderId == request.auth.uid
+      );
+      allow write: if isAdmin();
+    }
+
+    match /teacher_announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (isAdmin() || isTeacher());
+      allow update, delete: if isSignedIn() && (
+        isAdmin() ||
+        isTeacher() ||
+        resource.data.teacherId == request.auth.uid ||
+        resource.data.senderId == request.auth.uid
+      );
+      allow write: if isAdmin();
+    }
+
+    // ── Devices (FCM Push Tokens) ─────────────────────────────────────────
+    match /devices/{deviceId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+    }
+
+    // ── Notification Triggers (Cloud Functions & FCM Push) ────────────────
+    match /notification_triggers/{triggerId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Recycled Students ─────────────────────────────────────────────────
+    match /recycled_students/{studentId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── Payment Transactions & Financial Ledger ───────────────────────────
+    match /payment_transactions/{txnId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    match /payment_config/{configId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /fee_records/{feeRecordId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── Academy Profile & Schedules ───────────────────────────────────────
+    match /academy_profile/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || request.auth.uid == uid;
+    }
+
+    match /class_schedules/{scheduleId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /daily_records/{recordId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── Admins ────────────────────────────────────────────────────────────
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || request.auth.uid == adminId;
+    }
+
+    // ── Fallback ──────────────────────────────────────────────────────────
+    match /{document=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isTeacher();
+    }
+  }
+}

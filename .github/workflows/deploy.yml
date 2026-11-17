@@ -1,0 +1,94 @@
+name: Deploy Flutter Web to Vercel
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Enable Flutter Web
+        run: flutter config --enable-web
+
+      - name: Get Dependencies
+        working-directory: ./my_academy_app
+        run: flutter pub get
+
+      - name: Build Flutter Web App
+        working-directory: ./my_academy_app
+        run: flutter build web --release --no-tree-shake-icons
+
+      - name: Create Vercel config for web output
+        working-directory: ./my_academy_app
+        run: |
+          cat > build/web/vercel.json << 'EOF'
+          {
+            "version": 2,
+            "cleanUrls": true,
+            "rewrites": [
+              {
+                "source": "/(.*)",
+                "destination": "/index.html"
+              }
+            ],
+            "headers": [
+              {
+                "source": "/(.*)",
+                "headers": [
+                  {
+                    "key": "Cache-Control",
+                    "value": "public, max-age=0, must-revalidate"
+                  }
+                ]
+              },
+              {
+                "source": "/assets/(.*)",
+                "headers": [
+                  {
+                    "key": "Cache-Control",
+                    "value": "public, max-age=31536000, immutable"
+                  }
+                ]
+              },
+              {
+                "source": "/flutter_service_worker.js",
+                "headers": [
+                  {
+                    "key": "Cache-Control",
+                    "value": "no-cache, no-store, must-revalidate"
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./my_academy_app/build/web
+          vercel-args: '--prod'
+

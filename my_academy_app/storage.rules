@@ -1,0 +1,37 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Teacher profile picture uploads
+    match /teacher_profiles/{fileName} {
+      allow read, write: if true;
+    }
+
+    // Announcement & Notice attachment uploads (Pictures, PDFs, Audio Voice Notes)
+    match /announcements/{fileName} {
+      allow read, write: if true;
+    }
+
+    match /announcements/{allPaths=**} {
+      allow read, write: if true;
+    }
+
+    match /notices/{fileName} {
+      allow read, write: if true;
+    }
+
+    match /notices/{allPaths=**} {
+      allow read, write: if true;
+    }
+
+    // Student profile pictures
+    match /student_profiles/{fileName} {
+      allow read, write: if true;
+    }
+
+    // Fallback for all storage files
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}

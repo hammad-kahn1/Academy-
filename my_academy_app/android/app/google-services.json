@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "922952422234",
+    "project_id": "quaid-academy",
+    "storage_bucket": "quaid-academy.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:922952422234:android:24ebf3c3934ae98223d963",
+        "android_client_info": {
+          "package_name": "com.example.my_academy_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqj9jfDa2Q2rT9ccAuDkjTzugpksfgGvo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
