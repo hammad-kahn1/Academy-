@@ -1,7 +1,7 @@
 {
   "version": 2,
   "cleanUrls": true,
-  "buildCommand": "cd my_academy_app && bash build.sh",
+  "buildCommand": "cd my_academy_app && flutter build web --release --no-tree-shake-icons",
   "outputDirectory": "my_academy_app/build/web",
   "rewrites": [
     {

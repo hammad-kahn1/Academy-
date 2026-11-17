@@ -8,9 +8,10 @@ class SupabaseConfig {
 
   /// Your Supabase Anon / Public Key
   /// Find this in Supabase Dashboard -> Project Settings -> API -> Project API keys -> anon / public
-  static const String supabaseAnonKey = String.fromEnvironment(
+  /// Must be set via SUPABASE_ANON_KEY environment variable in production (Vercel/etc.)
+  static final String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxydnpvZmpsYXppeXB3c3N1cXZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEyMzQ1NjcsImV4cCI6MjA1NjgxMDU2N30.placeholder_key_paste_your_anon_key_here',
+    defaultValue: '',
   );
 
   static bool _isInitialized = false;

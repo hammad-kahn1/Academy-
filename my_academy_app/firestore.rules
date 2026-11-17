@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // -- Helpers ----------------------------------------------------------
+    // -- Authentication Helpers ------------------------------------------------
     function isSignedIn() {
       return request.auth != null;
     }
@@ -29,185 +29,172 @@ service cloud.firestore {
       return isSignedIn();
     }
 
-    // Helper to verify a teacher is creating an announcement for their authorized students/subject
-    function isTeacherAnnouncement() {
-      return isSignedIn() && (
-        isAdmin() ||
-        isTeacher() ||
-        (request.resource.data.type == 'teacher_announcement' ||
-         request.resource.data.notificationType == 'teacher_announcement')
-      );
-    }
-
     // -- Roles -------------------------------------------------------------
     match /roles/{uid} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // -- Teachers ----------------------------------------------------------
     match /teachers/{teacherId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || request.auth.uid == teacherId;
       match /{subcollection=**} {
-        allow read, write: if true;
+        allow read: if isSignedIn();
+        allow write: if isAdmin() || request.auth.uid == teacherId;
       }
     }
 
     // -- Teacher Payouts & Salary Ledger -----------------------------------
     match /teacher_payouts/{payoutId} {
-      allow read, get, list, create, update, delete, write: if true;
+      allow read, get, list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin() || request.auth.uid startsWith 'T-';
     }
 
     // -- Students ----------------------------------------------------------
     match /students/{studentId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || request.auth.uid == studentId;
       match /{subcollection=**} {
-        allow read, write: if true;
+        allow read: if isSignedIn();
+        allow write: if isAdmin() || request.auth.uid == studentId;
       }
     }
 
     // -- Student Auth & Password Recovery OTPs -----------------------------
     match /student_auth/{studentId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || request.auth.uid == studentId;
     }
 
     match /verification_otps/{otpId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if request.auth.uid == $otpId;
     }
 
     match /mail/{mailId} {
-      allow read, write, create: if true;
+      allow read: if isSignedIn();
+      allow write, create: if isAdmin();
     }
 
     // -- Notifications, Announcements & Notices ----------------------------
-    // Teachers can create and broadcast announcements directly to their students
     match /notifications/{notifId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (
-        isAdmin() ||
-        isTeacher() ||
-        request.resource.data.type == 'teacher_announcement' ||
-        request.resource.data.notificationType == 'teacher_announcement'
-      );
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (isAdmin() || isTeacher());
       allow update, delete: if isSignedIn() && (
         isAdmin() ||
         isTeacher() ||
         resource.data.teacherId == request.auth.uid ||
-        resource.data.senderId == request.auth.uid ||
-        resource.data.teacherAuthUid == request.auth.uid
+        resource.data.senderId == request.auth.uid
       );
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     match /announcements/{announcementId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (
-        isAdmin() ||
-        isTeacher() ||
-        request.resource.data.type == 'teacher_announcement' ||
-        request.resource.data.notificationType == 'teacher_announcement'
-      );
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (isAdmin() || isTeacher());
       allow update, delete: if isSignedIn() && (
         isAdmin() ||
         isTeacher() ||
         resource.data.teacherId == request.auth.uid ||
-        resource.data.senderId == request.auth.uid ||
-        resource.data.teacherAuthUid == request.auth.uid
+        resource.data.senderId == request.auth.uid
       );
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     match /notices/{noticeId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (
-        isAdmin() ||
-        isTeacher() ||
-        request.resource.data.type == 'teacher_announcement' ||
-        request.resource.data.notificationType == 'teacher_announcement'
-      );
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (isAdmin() || isTeacher());
       allow update, delete: if isSignedIn() && (
         isAdmin() ||
         isTeacher() ||
         resource.data.teacherId == request.auth.uid ||
-        resource.data.senderId == request.auth.uid ||
-        resource.data.teacherAuthUid == request.auth.uid
+        resource.data.senderId == request.auth.uid
       );
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     match /teacher_announcements/{announcementId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (
-        isAdmin() ||
-        isTeacher() ||
-        request.resource.data.type == 'teacher_announcement' ||
-        request.resource.data.notificationType == 'teacher_announcement'
-      );
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (isAdmin() || isTeacher());
       allow update, delete: if isSignedIn() && (
         isAdmin() ||
         isTeacher() ||
         resource.data.teacherId == request.auth.uid ||
-        resource.data.senderId == request.auth.uid ||
-        resource.data.teacherAuthUid == request.auth.uid
+        resource.data.senderId == request.auth.uid
       );
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // -- Devices (FCM Push Tokens) -----------------------------------------
     match /devices/{deviceId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && request.auth.uid == request.resource.data.userId;
     }
 
     // -- Notification Triggers (Cloud Functions & FCM Push) ----------------
     match /notification_triggers/{triggerId} {
-      allow read, write, create: if true;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
     }
 
     // -- Recycled Students -------------------------------------------------
     match /recycled_students/{studentId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // -- Payment Transactions & Financial Ledger ---------------------------
     match /payment_transactions/{txnId} {
-      allow read: if true;
-      allow create: if true;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
       allow update, delete: if isAdmin();
     }
 
     match /payment_config/{configId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
     match /audit_logs/{logId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     match /fee_records/{feeRecordId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // -- Academy Profile & Schedules ---------------------------------------
     match /academy_profile/{uid} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || request.auth.uid == uid;
     }
 
     match /class_schedules/{scheduleId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     match /daily_records/{recordId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // -- Admins ------------------------------------------------------------
     match /admins/{adminId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || request.auth.uid == adminId;
     }
 
     // -- Fallback ----------------------------------------------------------
     match /{document=**} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin() || isTeacher();
     }
   }
