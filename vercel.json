@@ -1,7 +1,7 @@
 {
   "version": 2,
   "cleanUrls": true,
-  "buildCommand": "bash my_academy_app/build.sh",
+  "buildCommand": "cd my_academy_app && bash build.sh",
   "outputDirectory": "my_academy_app/build/web",
   "rewrites": [
     {

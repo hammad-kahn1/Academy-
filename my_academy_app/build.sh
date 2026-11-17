@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-cd "$(dirname "$0")"
 FLUTTER_VERSION="3.38.4"
 
 echo "=========================================="
